@@ -118,7 +118,7 @@ bool Foam::functionObjects::TLeaf::execute()
     const auto& LAD = lookupObject<volScalarField>("LAD");
     const auto& p = lookupObject<volScalarField>("p");
 	const auto& rho = lookupObject<volScalarField>("rho");
-    const auto& w = lookupObject<volScalarField>("specHum");
+    const auto& specHum = lookupObject<volScalarField>("specHum");
     const auto& U = lookupObject<volVectorField>("U");
 
     // Calculate the temperature of the leaf (TLeaf) quantity
@@ -156,7 +156,8 @@ bool Foam::functionObjects::TLeaf::execute()
 
     do
     {
-        TLeaf.storePrevIter();
+        TLeaf = (TLeaf + TLeaf.prevIter())/2;
+		TLeaf.storePrevIter();
         
         // Radiative flux to the leaf (+ if entering the leaf) (as if all the radiation is absorbed)
         // [W/m^2] = [W/m^2]
@@ -177,12 +178,21 @@ bool Foam::functionObjects::TLeaf::execute()
         const dimensionedScalar C(dimTemperature, 237.3);
         const dimensionedScalar E(dimless, 0.61078);
 		const dimensionedScalar F(dimPressure/dimTemperature/dimDensity, 461.5);
-        
+        const dimensionedScalar Tmin(dimVelocity, 200);
+        const dimensionedScalar Tmax(dimVelocity, 400);
+        volScalarField Tmag(mag(T));
+        Tmag.clip(Tmin, Tmax);
         // [Pa]/[kg/(m s^2)]
 		
 		//Tetens equation [kPa]
-		//volScalarField pVSatAir = 1000 * pressureUnit * E * exp((A * (T - B)) / ((T - B) + C));
-        volScalarField pVAir = w * R_v_ * T;
+		volScalarField pVSatAir = 1000 * pressureUnit * E * exp((A * (Tmag - B)) / ((Tmag - B) + C));
+		//Humidity ratio [-]
+		volScalarField w = specHum / (1 - specHum);
+		//Relative humidity [-]
+		volScalarField RH = (w * p / (0.62198 + w)) / pVSatAir ;
+		//The vapour pressure of the air
+        volScalarField pVAir = pVSatAir * RH;
+		
 
         // Saturation vapour pressure at TLeaf (Tetens equation)
         // [Pa]/[kg/(m s^2)]

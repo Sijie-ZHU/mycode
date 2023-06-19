@@ -148,7 +148,7 @@ void Foam::fv::specHumSource::addSup
 		volScalarField qPlantSen = (TLeaf - T) * Cp0_ * rho *2 / r_a;// [W/m^2]
 		volScalarField qPlantLat = GLeaf - qPlantSen; // [W/m^2]
 		
-        eqn += qPlantLat * LAD * rho / L_v_ ;
+        eqn += qPlantLat * LAD / L_v_ ;
     }
 
 
